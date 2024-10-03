@@ -1,0 +1,197 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  CLIENT
+  MODERATOR
+  SUPERADMINISTRATOR
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  firstname     String?
+  lastname      String?
+  username      String?   @unique
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  verified      Boolean   @default(false)
+  code          String?
+  Session       Session[]
+  Account       Account?
+
+  Blocked Boolean @default(false)
+
+  Role Role @default(CLIENT)
+
+  Business Business[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String  @unique
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User?   @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Business {
+  id String @id @default(cuid())
+
+  name String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  Category  Category[]
+  Supplier  Supplier[]
+  Product   Product[]
+  Order     Order[]
+  payment   payment[]
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String?
+  description String? @db.Text
+
+  business   Business @relation(fields: [businessId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  businessId String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Product   Product[]
+}
+
+model Supplier {
+  id      String  @id @default(cuid())
+  name    String?
+  phone   String?
+  address String?
+  email   String?
+
+  business   Business @relation(fields: [businessId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  businessId String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Product   Product[]
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String?
+  description String? @db.Text
+  costprice   Float?
+  sellprice   Float?
+  quantity    Float?
+
+  image String? @db.Text
+
+  business   Business @relation(fields: [businessId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  businessId String
+
+  category   Category @relation(fields: [categoryId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  categoryId String
+
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  supplierId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Order     Order[]
+}
+
+model Order {
+  id      String  @id @default(cuid())
+  invoice Int?
+  name    String?
+  price   Int?
+  count   Int?
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  productId String
+
+  payment payment[]
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  businessId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PaymentType {
+  CASH
+  MPESA
+  CARD
+}
+
+model payment {
+  id           String @id @default(cuid())
+  total_amount Float?
+  invoice      Int?
+
+  Business   Business @relation(fields: [BusinessId], references: [id])
+  BusinessId String
+
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderId String
+
+  type PaymentType @default(CASH)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
